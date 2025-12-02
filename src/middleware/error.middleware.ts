@@ -14,7 +14,7 @@ export const errorHandler = (
   err: AppError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
@@ -41,7 +41,7 @@ export const errorHandler = (
  * 404 Not Found handler
  * This should be registered after all routes
  */
-export const notFoundHandler = (req: Request, res: Response, next: NextFunction) => {
+export const notFoundHandler = (req: Request, res: Response, _next: NextFunction) => {
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found`,

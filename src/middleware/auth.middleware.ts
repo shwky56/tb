@@ -6,22 +6,24 @@ import { UserRole } from '../models/user.model';
  * Middleware to authenticate requests using Passport JWT strategy
  * Validates JWT token and ensures single-device session enforcement
  */
-export const authenticate = (req: Request, res: Response, next: NextFunction) => {
-  passport.authenticate('jwt', { session: false }, (err: Error, user: any, info: any) => {
+export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
+  passport.authenticate('jwt', { session: false }, (err: Error, user: any, info: any): void => {
     if (err) {
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
         message: 'Internal server error during authentication',
         error: err.message,
       });
+      return;
     }
 
     if (!user) {
       const message = info?.message || 'Unauthorized access';
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message,
       });
+      return;
     }
 
     // Attach user to request object
@@ -41,21 +43,23 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
  * router.get('/admin/users', authenticate, authorize(['Super-admin']), listUsers);
  */
 export const authorize = (roles: UserRole[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     const user = req.user as any;
 
     if (!user) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Unauthorized. Please log in.',
       });
+      return;
     }
 
     if (!roles.includes(user.role)) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         message: 'Forbidden. You do not have permission to access this resource.',
       });
+      return;
     }
 
     next();
@@ -70,15 +74,16 @@ export const authorize = (roles: UserRole[]) => {
  * @returns Middleware function
  */
 export const authorizeOwnerOrAdmin = (userIdParam: string = 'userId') => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     const user = req.user as any;
     const targetUserId = req.params[userIdParam];
 
     if (!user) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Unauthorized. Please log in.',
       });
+      return;
     }
 
     // Allow if user is Super-admin or University-admin
@@ -88,10 +93,11 @@ export const authorizeOwnerOrAdmin = (userIdParam: string = 'userId') => {
     const isOwner = user.id === targetUserId;
 
     if (!isAdmin && !isOwner) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         message: 'Forbidden. You can only access your own resources.',
       });
+      return;
     }
 
     next();

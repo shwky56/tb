@@ -4,8 +4,10 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
+import swaggerUi from 'swagger-ui-express';
 import passport from './config/passport.config';
 import routes from './routes';
+import swaggerSpec from './config/swagger.config';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { securityHeaders, apiRateLimiter, sanitizeInput } from './middleware/security.middleware';
 import logger from './config/logger.config';
@@ -43,6 +45,12 @@ app.use(passport.initialize());
 // Rate limiting
 app.use('/api', apiRateLimiter);
 
+// Swagger documentation
+app.use('/api/docs', ...swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'LMS API Documentation',
+}));
+
 // API routes
 app.use('/api', routes);
 
@@ -53,7 +61,7 @@ app.get('/', (req, res) => {
     success: true,
     message: 'Welcome to LMS API',
     version: process.env.API_VERSION || 'v1',
-    documentation: '/api/health',
+    documentation: '/api/docs',
   });
 });
 

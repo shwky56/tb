@@ -52,7 +52,7 @@ passport.use(
 
         // Return user object (without password hash)
         const { password_hash, ...userWithoutPassword } = user;
-        return done(null, userWithoutPassword);
+        return done(null, { ...userWithoutPassword, sessionId: user.currentSessionId || '' });
       } catch (error) {
         return done(error);
       }
@@ -115,7 +115,7 @@ passport.use(
 
       // Return user object (without password hash)
       const { password_hash, ...userWithoutPassword } = user;
-      return done(null, userWithoutPassword);
+      return done(null, { ...userWithoutPassword, sessionId: sessionId });
     } catch (error) {
       return done(error);
     }

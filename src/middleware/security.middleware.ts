@@ -52,7 +52,7 @@ export const apiRateLimiter = rateLimit({
 /**
  * Sanitize user input to prevent XSS attacks
  */
-export const sanitizeInput = (req: Request, res: Response, next: NextFunction) => {
+export const sanitizeInput = (req: Request, _res: Response, next: NextFunction) => {
   // Basic XSS prevention - remove script tags from all inputs
   const sanitize = (obj: any): any => {
     if (typeof obj === 'string') {

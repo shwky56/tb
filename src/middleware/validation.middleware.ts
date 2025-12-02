@@ -23,6 +23,6 @@ export const validate = (validations: ValidationChain[]) => {
       });
     }
 
-    next();
+    return next();
   };
 };

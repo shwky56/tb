@@ -3,6 +3,9 @@ import authRoutes from './auth.routes';
 import userRoutes from './user.routes';
 import courseRoutes from './course.routes';
 import enrollmentRoutes from './enrollment.routes';
+import universityRoutes from './university.routes';
+import facultyRoutes from './faculty.routes';
+import academicLevelRoutes from './academic-level.routes';
 
 const router: Router = Router();
 
@@ -20,5 +23,8 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/courses', courseRoutes);
 router.use('/enrollments', enrollmentRoutes);
+router.use('/universities', universityRoutes);
+router.use('/faculties', facultyRoutes);
+router.use('/academic-levels', academicLevelRoutes);
 
 export default router;

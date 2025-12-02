@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(tree:*)"
+      "Bash(Select-Object Name, Status, DisplayName)",
+      "Bash(sc query:*)",
+      "Bash(npm install:*)",
+      "Bash(npm cache clean:*)",
+      "Bash(yarn add swagger-jsdoc swagger-ui-express)",
+      "Bash(yarn add:*)"
     ],
     "deny": [],
     "ask": []
