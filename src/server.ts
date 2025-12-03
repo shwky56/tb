@@ -6,7 +6,7 @@ import logger from './config/logger.config';
 // Load environment variables
 dotenv.config();
 
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 
 /**
  * Initialize database connection
@@ -30,12 +30,14 @@ const startServer = async (): Promise<void> => {
     // Initialize database
     await initializeDatabase();
 
-    // Start Express server
-    app.listen(PORT, () => {
+    // Start Express server - listen on all network interfaces
+    app.listen(PORT, '0.0.0.0', () => {
       logger.info(`Server is running on port ${PORT}`);
       logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
       logger.info(`API URL: http://localhost:${PORT}/api`);
-      logger.info(`Health check: http://localhost:${PORT}/api/health`);
+      logger.info(`Public API URL: http://91.108.121.145:${PORT}/api`);
+      logger.info(`Swagger Docs: http://91.108.121.145:${PORT}/api/docs`);
+      logger.info(`Health check: http://localhost:${PORT}/health`);
     });
   } catch (error) {
     logger.error('Error starting server:', error);
