@@ -35,26 +35,24 @@ export const registerUser = async (req: Request, res: Response): Promise<Respons
 };
 
 /**
- * CRITICAL: Login user with single-device enforcement
+ * CRITICAL: Login user with 2-device limit enforcement
  * POST /api/auth/login
  *
  * Login Flow:
  * 1. Passport Local Strategy validates email and password
- * 2. Check if user already has an active session (currentSessionId in DB)
- * 3. If active session exists, REJECT login with error message
- * 4. If no active session, generate new unique session ID
- * 5. Store session ID in database along with device info and IP
- * 6. Generate JWT tokens with embedded session ID
- * 7. Return tokens to client
+ * 2. Check active session count
+ * 3. If user has 2 active sessions, automatically logout the oldest one
+ * 4. Create new session and generate JWT tokens
+ * 5. Return tokens to client
  *
  * Session Validation on Subsequent Requests:
  * - Passport JWT Strategy extracts session ID from token
- * - Compares it with currentSessionId in database
- * - If mismatch, user logged in from different device, reject request
+ * - Checks if session exists and is active in database
+ * - If session is inactive, reject request
  */
 export const loginUser = async (req: Request, res: Response): Promise<Response> => {
   return new Promise((resolve) => {
-    // Step 1 & 2: Use Passport Local Strategy to validate credentials
+    // Step 1: Use Passport Local Strategy to validate credentials
     passport.authenticate('local', { session: false }, async (err: Error, user: any, info: any) => {
       try {
         // Handle authentication errors
@@ -68,21 +66,7 @@ export const loginUser = async (req: Request, res: Response): Promise<Response> 
           return resolve(sendError(res, message, undefined, 401));
         }
 
-        // Step 3: CRITICAL - Check for existing active session
-        // This enforces single-device login policy
-        const hasActiveSession = await userService.hasActiveSession(user.id);
-        if (hasActiveSession) {
-          return resolve(
-            sendError(
-              res,
-              'You are already logged in from another device. Please log out of your other session first.',
-              undefined,
-              409 // Conflict status code
-            )
-          );
-        }
-
-        // Step 4-7: Generate session and tokens
+        // Step 2-4: Generate session and tokens (handles 2-device limit internally)
         const deviceInfo = extractDeviceInfo(req);
         const ipAddress = extractIpAddress(req);
 
@@ -103,7 +87,7 @@ export const loginUser = async (req: Request, res: Response): Promise<Response> 
 };
 
 /**
- * Logout user - clears session from database
+ * Logout user - deactivates current session
  * POST /api/auth/logout
  * Requires authentication
  */
@@ -111,11 +95,11 @@ export const logoutUser = async (req: Request, res: Response): Promise<Response>
   try {
     const user = req.user as any;
 
-    if (!user) {
+    if (!user || !user.sessionId) {
       return sendError(res, 'Unauthorized', undefined, 401);
     }
 
-    await userService.logoutUser(user.id);
+    await userService.logoutUser(user.id, user.sessionId);
 
     return sendSuccess(res, 'Logout successful');
   } catch (error: any) {
@@ -152,7 +136,7 @@ export const getProfile = async (req: Request, res: Response): Promise<Response>
 export const updateProfile = async (req: Request, res: Response): Promise<Response> => {
   try {
     const user = req.user as any;
-    const { name, university } = req.body;
+    const { name, email, university, phoneNumber, dateOfBirth, address, city, country, bio } = req.body;
 
     if (!user) {
       return sendError(res, 'Unauthorized', undefined, 401);
@@ -160,7 +144,14 @@ export const updateProfile = async (req: Request, res: Response): Promise<Respon
 
     const updatedProfile = await userService.updateUserProfile(user.id, {
       name,
+      email,
       university,
+      phoneNumber,
+      dateOfBirth,
+      address,
+      city,
+      country,
+      bio,
     });
 
     return sendSuccess(res, 'Profile updated successfully', { user: updatedProfile });
@@ -283,5 +274,69 @@ export const deleteUser = async (req: Request, res: Response): Promise<Response>
     return sendSuccess(res, 'User deleted successfully');
   } catch (error: any) {
     return sendError(res, error.message || 'Failed to delete user', undefined, 400);
+  }
+};
+
+/**
+ * Get user's active sessions
+ * GET /api/users/sessions
+ * Requires authentication
+ */
+export const getUserSessions = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const user = req.user as any;
+
+    if (!user) {
+      return sendError(res, 'Unauthorized', undefined, 401);
+    }
+
+    const sessions = await userService.getUserSessions(user.id);
+
+    return sendSuccess(res, 'Sessions retrieved successfully', { sessions });
+  } catch (error: any) {
+    return sendError(res, error.message || 'Failed to retrieve sessions', undefined, 400);
+  }
+};
+
+/**
+ * Kill a specific session
+ * DELETE /api/users/sessions/:sessionId
+ * Requires authentication
+ */
+export const killSession = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const user = req.user as any;
+    const { sessionId } = req.params;
+
+    if (!user) {
+      return sendError(res, 'Unauthorized', undefined, 401);
+    }
+
+    const success = await userService.killSession(user.id, sessionId);
+
+    if (!success) {
+      return sendError(res, 'Session not found or already inactive', undefined, 404);
+    }
+
+    return sendSuccess(res, 'Session terminated successfully');
+  } catch (error: any) {
+    return sendError(res, error.message || 'Failed to terminate session', undefined, 400);
+  }
+};
+
+/**
+ * Admin force logout user
+ * POST /api/users/:userId/force-logout
+ * Requires authentication and admin role
+ */
+export const adminForceLogout = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { userId } = req.params;
+
+    await userService.adminForceLogout(userId);
+
+    return sendSuccess(res, 'User logged out successfully from all devices');
+  } catch (error: any) {
+    return sendError(res, error.message || 'Failed to force logout user', undefined, 400);
   }
 };

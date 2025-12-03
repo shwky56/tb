@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
 
 # Build output
@@ -42,3 +41,13 @@ uploads/*
 *.tmp
 temp/
 tmp/
+
+# Deployment
+backups/
+*.tar.gz
+deployment.tar.gz
+
+# SSH Keys
+*.pem
+*.key
+id_rsa*

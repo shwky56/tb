@@ -3,8 +3,10 @@ import { Strategy as LocalStrategy } from 'passport-local';
 import { Strategy as JwtStrategy, ExtractJwt, StrategyOptions } from 'passport-jwt';
 import bcrypt from 'bcryptjs';
 import { UserRepository } from '../repositories/user.repository';
+import { SessionRepository } from '../repositories/session.repository';
 
 const userRepository = new UserRepository();
+const sessionRepository = new SessionRepository();
 
 /**
  * Local Strategy for username/password authentication
@@ -88,30 +90,38 @@ passport.use(
         return done(null, false, { message: 'Account is not active' });
       }
 
-      // CRITICAL: Validate session ID matches current session
-      // This ensures single-device login enforcement
-      if (user.currentSessionId !== sessionId) {
+      // CRITICAL: Validate session exists and is active
+      // This ensures multi-device login enforcement (max 2 devices)
+      const session = await sessionRepository.findBySessionId(sessionId);
+
+      if (!session) {
         return done(null, false, {
-          message: 'Session is invalid. You may have logged in from another device.'
+          message: 'Session is invalid. You may have been logged out.'
+        });
+      }
+
+      if (!session.isActive) {
+        return done(null, false, {
+          message: 'Session has been terminated. Please log in again.'
         });
       }
 
       // Check session timeout
       const sessionTimeout = parseInt(process.env.SESSION_TIMEOUT_MINUTES || '30', 10);
-      
-      if (user.sessionLastActivity) {
-        const sessionAge = Date.now() - new Date(user.sessionLastActivity).getTime();
+
+      if (session.lastActivity) {
+        const sessionAge = Date.now() - new Date(session.lastActivity).getTime();
         const sessionAgeMinutes = sessionAge / (1000 * 60);
 
         if (sessionAgeMinutes > sessionTimeout) {
-          // Session has expired, clear session
-          await userRepository.clearSession(userId);
+          // Session has expired, deactivate it
+          await sessionRepository.deactivateSession(sessionId);
           return done(null, false, { message: 'Session has expired. Please log in again.' });
         }
       }
 
       // Update last activity timestamp
-      await userRepository.updateSessionActivity(userId);
+      await sessionRepository.updateLastActivity(sessionId);
 
       // Return user object (without password hash)
       const { password_hash, ...userWithoutPassword } = user;

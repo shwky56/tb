@@ -37,6 +37,24 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true })
   university?: string;
 
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  phoneNumber?: string;
+
+  @Column({ type: 'date', nullable: true })
+  dateOfBirth?: Date;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  address?: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  city?: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  country?: string;
+
+  @Column({ type: 'text', nullable: true })
+  bio?: string;
+
   @Column({
     type: 'enum',
     enum: ['Active', 'Pending', 'Banned'],

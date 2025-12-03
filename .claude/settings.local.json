@@ -6,7 +6,10 @@
       "Bash(npm install:*)",
       "Bash(npm cache clean:*)",
       "Bash(yarn add swagger-jsdoc swagger-ui-express)",
-      "Bash(yarn add:*)"
+      "Bash(yarn add:*)",
+      "Bash(npm run typeorm:*)",
+      "Bash(cat:*)",
+      "Bash(npm run migration:run:*)"
     ],
     "deny": [],
     "ask": []

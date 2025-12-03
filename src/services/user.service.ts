@@ -1,4 +1,5 @@
 import { UserRepository } from '../repositories/user.repository';
+import { SessionRepository } from '../repositories/session.repository';
 import { User, UserRole, UserStatus } from '../models/user.model';
 import { hashPassword } from '../utils/hash.util';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.util';
@@ -6,9 +7,12 @@ import { generateSessionId } from '../utils/session.util';
 
 export class UserService {
   private userRepository: UserRepository;
+  private sessionRepository: SessionRepository;
+  private readonly MAX_SESSIONS = 2;
 
   constructor() {
     this.userRepository = new UserRepository();
+    this.sessionRepository = new SessionRepository();
   }
 
   /**
@@ -50,15 +54,14 @@ export class UserService {
   }
 
   /**
-   * CRITICAL: Login with single-device enforcement
+   * CRITICAL: Login with 2-device limit enforcement
    *
    * Login Flow:
    * 1. Validate credentials (handled by Passport Local Strategy)
-   * 2. Check if user already has an active session (currentSessionId)
-   * 3. If active session exists, reject login
-   * 4. If no active session, generate new session ID and JWT
-   * 5. Store session ID in database
-   * 6. Return tokens to client
+   * 2. Check active session count
+   * 3. If user has 2 active sessions, remove the oldest one
+   * 4. Create new session and generate JWT
+   * 5. Return tokens to client
    */
   async loginUser(
     user: User,
@@ -69,18 +72,26 @@ export class UserService {
     refreshToken: string;
     user: Partial<User>;
   }> {
-    // CRITICAL CHECK: Verify if user already has an active session
-    if (user.currentSessionId) {
-      throw new Error(
-        'You are already logged in from another device. Please log out of your other session first.'
-      );
+    // Check how many active sessions the user has
+    const activeSessionCount = await this.sessionRepository.countActiveSessionsByUserId(user.id);
+
+    // If user has reached max sessions (2), remove the oldest one
+    if (activeSessionCount >= this.MAX_SESSIONS) {
+      await this.sessionRepository.deleteOldestSession(user.id);
     }
 
     // Generate unique session ID for this login
     const sessionId = generateSessionId();
 
-    // Update user's session in database
-    await this.userRepository.setSession(user.id, sessionId, deviceInfo, ipAddress);
+    // Create new session in database
+    await this.sessionRepository.create({
+      userId: user.id,
+      sessionId,
+      deviceInfo,
+      ipAddress,
+      lastActivity: new Date(),
+      isActive: true,
+    });
 
     // Generate JWT tokens with session ID embedded
     const tokenPayload = {
@@ -104,10 +115,11 @@ export class UserService {
   }
 
   /**
-   * Logout user - clears session
+   * Logout user - deactivates current session
    */
-  async logoutUser(userId: string): Promise<void> {
-    await this.userRepository.clearSession(userId);
+  // @ts-ignore
+  async logoutUser(userId: string, sessionId: string): Promise<void> {
+    await this.sessionRepository.deactivateSession(sessionId);
   }
 
   /**
@@ -130,9 +142,30 @@ export class UserService {
     userId: string,
     updates: {
       name?: string;
+      email?: string;
       university?: string;
+      phoneNumber?: string;
+      dateOfBirth?: Date;
+      address?: string;
+      city?: string;
+      country?: string;
+      bio?: string;
     }
   ): Promise<Partial<User>> {
+    // If email is being updated, check if it already exists
+    if (updates.email) {
+      const emailExists = await this.userRepository.emailExists(updates.email);
+      const currentUser = await this.userRepository.findById(userId);
+      
+      // Only throw error if email exists and belongs to different user
+      if (emailExists && currentUser?.email.toLowerCase() !== updates.email.toLowerCase()) {
+        throw new Error('Email already in use by another account');
+      }
+      
+      // Normalize email to lowercase
+      updates.email = updates.email.toLowerCase();
+    }
+
     const user = await this.userRepository.update(userId, updates);
     if (!user) {
       throw new Error('User not found');
@@ -236,6 +269,35 @@ export class UserService {
    * Check if user has active session
    */
   async hasActiveSession(userId: string): Promise<boolean> {
-    return await this.userRepository.hasActiveSession(userId);
+    const count = await this.sessionRepository.countActiveSessionsByUserId(userId);
+    return count > 0;
+  }
+
+  /**
+   * Get all active sessions for a user
+   */
+  async getUserSessions(userId: string): Promise<any[]> {
+    const sessions = await this.sessionRepository.findActiveSessionsByUserId(userId);
+    return sessions.map(session => ({
+      id: session.id,
+      deviceInfo: session.deviceInfo,
+      ipAddress: session.ipAddress,
+      lastActivity: session.lastActivity,
+      createdAt: session.createdAt,
+    }));
+  }
+
+  /**
+   * Kill a specific session (user can kill their own sessions)
+   */
+  async killSession(userId: string, sessionId: string): Promise<boolean> {
+    return await this.sessionRepository.deactivateSessionById(sessionId, userId);
+  }
+
+  /**
+   * Admin force logout - deactivates all sessions for a user
+   */
+  async adminForceLogout(userId: string): Promise<void> {
+    await this.sessionRepository.deactivateAllUserSessions(userId);
   }
 }

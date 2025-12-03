@@ -54,6 +54,18 @@ app.use('/api/docs', ...swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 // API routes
 app.use('/api', routes);
 
+// Health check endpoint (for CI/CD monitoring)
+//@ts-ignore
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+  });
+});
+
 // Root endpoint
 //@ts-ignore
 app.get('/', (req, res) => {

@@ -79,28 +79,68 @@ const options: swaggerJsdoc.Options = {
               format: 'uuid',
               example: '550e8400-e29b-41d4-a716-446655440000',
             },
+            name: {
+              type: 'string',
+              example: 'John Smith',
+            },
             email: {
               type: 'string',
               format: 'email',
               example: 'user@example.com',
-            },
-            firstName: {
-              type: 'string',
-              example: 'John',
-            },
-            lastName: {
-              type: 'string',
-              example: 'Doe',
             },
             role: {
               type: 'string',
               enum: ['Student', 'Instructor', 'University-admin', 'Super-admin'],
               example: 'Student',
             },
+            university: {
+              type: 'string',
+              example: 'Harvard University',
+              nullable: true,
+            },
+            phoneNumber: {
+              type: 'string',
+              example: '+1 (555) 123-4567',
+              nullable: true,
+            },
+            dateOfBirth: {
+              type: 'string',
+              format: 'date',
+              example: '1990-05-15',
+              nullable: true,
+            },
+            address: {
+              type: 'string',
+              example: '123 Main Street, Apt 4B',
+              nullable: true,
+            },
+            city: {
+              type: 'string',
+              example: 'New York',
+              nullable: true,
+            },
+            country: {
+              type: 'string',
+              example: 'United States',
+              nullable: true,
+            },
+            bio: {
+              type: 'string',
+              example: 'Software developer passionate about education technology',
+              nullable: true,
+            },
             status: {
               type: 'string',
-              enum: ['Active', 'Inactive', 'Suspended'],
+              enum: ['Active', 'Pending', 'Banned'],
               example: 'Active',
+            },
+            isActive: {
+              type: 'boolean',
+              example: true,
+            },
+            isDeleted: {
+              type: 'boolean',
+              example: false,
             },
             createdAt: {
               type: 'string',
